@@ -1,0 +1,228 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Narrative Design System */
+@layer base {
+  :root {
+    --narrative-blue: #2563eb;
+    --narrative-purple: #9333ea;
+    --narrative-gold: #f59e0b;
+    --narrative-paper: #f5f5f4;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-gradient-to-br from-narrative-paper-50 via-white to-blue-50/30 
+           bg-fixed font-body text-narrative-ink-700 antialiased;
+    background-image: 
+      radial-gradient(circle at 20% 80%, rgba(37, 99, 235, 0.03) 0%, transparent 40%),
+      radial-gradient(circle at 80% 20%, rgba(147, 51, 234, 0.03) 0%, transparent 40%);
+  }
+
+  /* Стилизация скроллбара */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-narrative-paper-100 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gradient-to-b from-narrative-blue-400 to-narrative-purple-400 
+           rounded-full hover:from-narrative-blue-500 hover:to-narrative-purple-500 
+           transition-all duration-300;
+  }
+
+  /* Выделение текста */
+  ::selection {
+    @apply bg-narrative-purple-200 text-narrative-ink-900;
+  }
+
+  /* Типографика */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-bold tracking-tight text-narrative-ink-900;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+
+  /* Ссылки */
+  a {
+    @apply text-narrative-blue-600 hover:text-narrative-purple-600 
+           transition-colors duration-200;
+  }
+}
+
+@layer components {
+  /* Narrative кнопки */
+  .btn-narrative {
+    @apply inline-flex items-center justify-center px-6 py-3 
+           bg-gradient-to-r from-narrative-blue-600 to-narrative-purple-600 
+           text-white font-medium rounded-narrative
+           hover:from-narrative-blue-700 hover:to-narrative-purple-700 
+           hover:shadow-narrative-lg hover:-translate-y-0.5
+           active:translate-y-0
+           focus:outline-none focus:ring-2 focus:ring-narrative-purple-500 focus:ring-offset-2
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+           transition-all duration-300 animate-slide-in;
+  }
+
+  .btn-narrative-outline {
+    @apply inline-flex items-center justify-center px-6 py-3 
+           border-2 border-narrative-blue-300 text-narrative-blue-700 
+           font-medium rounded-narrative
+           hover:border-narrative-blue-400 hover:text-narrative-blue-800 
+           hover:bg-narrative-blue-50
+           active:bg-narrative-blue-100
+           focus:outline-none focus:ring-2 focus:ring-narrative-blue-300
+           transition-all duration-300;
+  }
+
+  .btn-narrative-ghost {
+    @apply inline-flex items-center justify-center px-6 py-3 
+           text-narrative-ink-600 font-medium rounded-narrative
+           hover:bg-narrative-paper-100 hover:text-narrative-ink-800
+           active:bg-narrative-paper-200
+           transition-all duration-200;
+  }
+
+  /* Narrative карточки */
+  .card-narrative {
+    @apply bg-white/80 backdrop-blur-sm rounded-narrative-lg 
+           shadow-narrative border border-white/50
+           hover:shadow-narrative-lg hover:border-narrative-blue-200/50
+           transition-all duration-300 animate-fade-in;
+  }
+
+  .card-narrative-paper {
+    @apply bg-narrative-paper-100 bg-paper-texture rounded-narrative-lg 
+           shadow-book border border-narrative-paper-300/50
+           hover:shadow-narrative-lg
+           transition-all duration-300;
+  }
+
+  /* Narrative инпуты */
+  .input-narrative {
+    @apply w-full px-4 py-3 bg-white/70 backdrop-blur-sm 
+           border-2 border-narrative-paper-300 rounded-narrative
+           placeholder:text-narrative-ink-400
+           focus:border-narrative-blue-400 focus:ring-2 
+           focus:ring-narrative-blue-200 focus:bg-white
+           outline-none transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Narrative баджи */
+  .badge-narrative {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+           bg-gradient-to-r from-narrative-blue-100 to-narrative-purple-100 
+           text-narrative-blue-800;
+  }
+
+  .badge-narrative-gold {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+           bg-gradient-to-r from-narrative-gold-100 to-yellow-100 
+           text-narrative-gold-800;
+  }
+
+  /* Narrative навигация */
+  .nav-item-narrative {
+    @apply flex items-center space-x-2 px-4 py-3 rounded-narrative
+           text-narrative-ink-600 font-medium
+           hover:text-narrative-blue-600 hover:bg-narrative-blue-50
+           transition-all duration-200;
+  }
+
+  .nav-item-narrative-active {
+    @apply bg-gradient-to-r from-narrative-blue-50 to-narrative-purple-50 
+           text-narrative-blue-700 border-r-4 border-narrative-blue-500;
+  }
+
+  /* Книжные элементы */
+  .book-cover {
+    @apply relative overflow-hidden rounded-narrative shadow-book
+           bg-gradient-to-br from-narrative-blue-500 via-narrative-purple-500 to-pink-500
+           transition-all duration-500 hover:shadow-narrative-lg;
+  }
+
+  .book-page {
+    @apply bg-white border border-narrative-paper-300 rounded-narrative
+           shadow-inner p-8 min-h-[calc(100vh-200px)];
+  }
+
+  .chapter-card {
+    @apply card-narrative-paper p-6 hover:border-narrative-blue-300
+           cursor-pointer transition-all duration-300
+           hover:-translate-y-1;
+  }
+
+  /* Эффекты */
+  .ink-blot {
+    @apply absolute inset-0 bg-ink-blot opacity-0 group-hover:opacity-100 
+           transition-opacity duration-500 pointer-events-none;
+  }
+
+  .page-turn-effect {
+    @apply relative overflow-hidden;
+  }
+
+  .page-turn-effect::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent 
+           transform -skew-x-12 -translate-x-full group-hover:translate-x-full 
+           transition-transform duration-700;
+  }
+}
+
+/* Анимации */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 75%
+  );
+  background-size: 200% auto;
+  animation: shimmer 2s infinite linear;
+}
+
+/* Утилиты */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
