@@ -82,6 +82,66 @@ class ApiClient {
     return this.request(`/books/${id}`);
   }
 
+  // Главы
+  async getBookChapters(bookId) {
+    return this.request(`/books/${bookId}/chapters`);
+  }
+
+  async createChapter(bookId, chapterData) {
+    return this.request(`/books/${bookId}/chapters`, {
+      method: 'POST',
+      body: JSON.stringify(chapterData),
+    });
+  }
+
+  async updateChapter(chapterId, chapterData) {
+    return this.request(`/chapters/${chapterId}`, {
+      method: 'PUT',
+      body: JSON.stringify(chapterData),
+    });
+  }
+
+  async deleteChapter(chapterId) {
+    return this.request(`/chapters/${chapterId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async reorderChapters(bookId, chapters) {
+    return this.request(`/books/${bookId}/chapters/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify({ chapters }),
+    });
+  }
+
+  // Загрузка файлов
+  async uploadCover(file) {
+    const formData = new FormData();
+    formData.append('cover', file);
+    
+    const token = localStorage.getItem('token');
+    
+    return fetch(`${this.baseURL}/upload/cover`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // Не устанавливаем Content-Type, FormData сделает это сам
+      },
+      body: formData,
+    })
+    .then(async (response) => {
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      return response.json();
+    })
+    .catch((error) => {
+      console.error('Upload Error:', error);
+      throw error;
+    });
+  }
+
   // Пользователи
   async getUser(id) {
     return this.request(`/users/${id}`);

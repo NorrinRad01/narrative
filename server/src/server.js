@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const path = require('path'); // ДОБАВИЛИ
 const { get, run, query } = require('./db');
 
 // Загружаем переменные окружения
@@ -18,6 +19,14 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Статические файлы (для загруженных обложек)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Импорт роутов
+console.log(__dirname);
+const chaptersRouter = require('./routes/chapters');
+const uploadsRouter = require('./routes/uploads');
 
 // Простые маршруты для теста
 app.get('/api/health', (req, res) => {
@@ -46,6 +55,16 @@ app.get('/api', (req, res) => {
         getAll: 'GET /api/books',
         create: 'POST /api/books',
         getOne: 'GET /api/books/:id'
+      },
+      chapters: {
+        getChapters: 'GET /api/books/:id/chapters',
+        createChapter: 'POST /api/books/:id/chapters',
+        updateChapter: 'PUT /api/chapters/:id',
+        deleteChapter: 'DELETE /api/chapters/:id',
+        reorderChapters: 'PUT /api/books/:id/chapters/reorder'
+      },
+      uploads: {
+        uploadCover: 'POST /api/upload/cover'
       },
       users: {
         getOne: 'GET /api/users/:id'
@@ -283,7 +302,7 @@ app.get('/api/books', async (req, res) => {
   }
 });
 
-// СОЗДАНИЕ НОВОЙ КНИГИ
+// СОЗДАНИЕ НОВОЙ КНИГИ (С ОБЛОЖКОЙ)
 app.post('/api/books', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -296,7 +315,7 @@ app.post('/api/books', async (req, res) => {
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'narrative_secret_key_2024');
-    const { title, description, genre, status = 'draft' } = req.body;
+    const { title, description, genre, status = 'draft', cover_url } = req.body;
     
     if (!title || !genre) {
       return res.status(400).json({
@@ -306,9 +325,9 @@ app.post('/api/books', async (req, res) => {
     }
     
     const result = await run(
-      `INSERT INTO books (author_id, title, description, genre, status) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [decoded.userId, title, description || '', genre, status]
+      `INSERT INTO books (author_id, title, description, genre, status, cover_url) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [decoded.userId, title, description || '', genre, status, cover_url || null]
     );
     
     const newBook = await get(
@@ -339,7 +358,7 @@ app.post('/api/books', async (req, res) => {
   }
 });
 
-// ПОЛУЧЕНИЕ ОДНОЙ КНИГИ
+// ПОЛУЧЕНИЕ ОДНОЙ КНИГИ (С ГЛАВАМИ)
 app.get('/api/books/:id', async (req, res) => {
   try {
     const bookId = req.params.id;
@@ -362,9 +381,16 @@ app.get('/api/books/:id', async (req, res) => {
       });
     }
     
+    // Получаем главы книги
+    const chapters = await query(
+      'SELECT * FROM chapters WHERE book_id = ? ORDER BY order_index ASC',
+      [bookId]
+    );
+    
     res.json({
       success: true,
-      book: book
+      book: book,
+      chapters: chapters
     });
     
   } catch (error) {
@@ -395,7 +421,7 @@ app.get('/api/users/:id', async (req, res) => {
     
     // Получаем книги пользователя
     const userBooks = await query(
-      'SELECT id, title, description, genre, status, likes_count, created_at FROM books WHERE author_id = ? ORDER BY created_at DESC',
+      'SELECT id, title, description, genre, status, cover_url, likes_count, created_at FROM books WHERE author_id = ? ORDER BY created_at DESC',
       [userId]
     );
     
@@ -414,6 +440,10 @@ app.get('/api/users/:id', async (req, res) => {
     });
   }
 });
+
+// Подключаем роуты глав и загрузок
+app.use('/api', chaptersRouter);
+app.use('/api', uploadsRouter);
 
 // 404 обработчик
 app.use((req, res) => {
@@ -443,14 +473,19 @@ app.listen(PORT, () => {
   console.log(`📍  Локальный:  http://localhost:${PORT}`);
   console.log(`📚  API:        http://localhost:${PORT}/api`);
   console.log(`🏥  Health:     http://localhost:${PORT}/api/health`);
+  console.log(`📁  Uploads:    http://localhost:${PORT}/uploads`);
   console.log('='.repeat(50));
   console.log('📝  Доступные эндпоинты:');
-  console.log('   🔐  POST   /api/auth/login     - Вход');
-  console.log('   📝  POST   /api/auth/register  - Регистрация');
-  console.log('   👤  GET    /api/auth/profile   - Профиль');
-  console.log('   📚  GET    /api/books          - Все книги');
-  console.log('   📖  POST   /api/books          - Создать книгу');
-  console.log('   👥  GET    /api/users/:id      - Профиль пользователя');
+  console.log('   🔐  POST   /api/auth/login          - Вход');
+  console.log('   📝  POST   /api/auth/register       - Регистрация');
+  console.log('   👤  GET    /api/auth/profile        - Профиль');
+  console.log('   📚  GET    /api/books               - Все книги');
+  console.log('   📖  POST   /api/books               - Создать книгу');
+  console.log('   📖  GET    /api/books/:id           - Книга с главами');
+  console.log('   📖  GET    /api/books/:id/chapters  - Главы книги');
+  console.log('   📝  POST   /api/books/:id/chapters  - Создать главу');
+  console.log('   🖼️   POST   /api/upload/cover        - Загрузить обложку');
+  console.log('   👥  GET    /api/users/:id           - Профиль пользователя');
   console.log('='.repeat(50));
   console.log('🔄  Логи сервера будут отображаться ниже...');
 });

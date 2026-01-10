@@ -51,6 +51,21 @@ db.serialize(() => {
     )
   `)
   
+  // НОВАЯ ТАБЛИЦА: Главы книг
+  db.run(`
+    CREATE TABLE IF NOT EXISTS chapters (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      book_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT DEFAULT '',
+      order_index INTEGER NOT NULL,
+      word_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (book_id) REFERENCES books (id) ON DELETE CASCADE
+    )
+  `)
+  
   // Таблица постов (лента)
   db.run(`
     CREATE TABLE IF NOT EXISTS posts (
@@ -89,6 +104,19 @@ db.serialize(() => {
   `, [1, 'Тень Империи', 'Эпическая сага о магии и приключениях', 'Фэнтези', 'published'])
   
   console.log('📚 Тестовая книга создана: "Тень Империи"')
+  
+  // Создаем тестовые главы
+  db.run(`
+    INSERT OR IGNORE INTO chapters (book_id, title, content, order_index, word_count)
+    VALUES (?, ?, ?, ?, ?)
+  `, [1, 'Пролог', 'Давным-давно в далёкой галактике...', 1, 10])
+  
+  db.run(`
+    INSERT OR IGNORE INTO chapters (book_id, title, content, order_index, word_count)
+    VALUES (?, ?, ?, ?, ?)
+  `, [1, 'Глава 1: Начало пути', 'Утро было туманным...', 2, 25])
+  
+  console.log('📖 Тестовые главы созданы')
 })
 
 db.close((err) => {

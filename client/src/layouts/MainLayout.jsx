@@ -1,14 +1,15 @@
 import Header from "../components/HeaderNarrative";
 import Sidebar from "../components/SidebarNarrative";
+import { Outlet } from 'react-router-dom';
 
-export default function MainLayout({ children }) {
+export default function MainLayout() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="flex">
         <Sidebar />
         <main className="flex-1 p-8">
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>
