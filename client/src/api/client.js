@@ -141,6 +141,28 @@ class ApiClient {
       throw error;
     });
   }
+  async updateBook(id, bookData) {
+  return this.request(`/books/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(bookData),
+  });
+}
+
+async deleteBook(id) {
+  return this.request(`/books/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+async getBookCounts() {
+  const books = await this.getBooks();
+  return {
+    all: books.length,
+    drafts: books.filter(b => b.status === 'draft').length,
+    published: books.filter(b => b.status === 'published').length,
+    archived: books.filter(b => b.status === 'archived').length
+  };
+}
 
   // Пользователи
   async getUser(id) {

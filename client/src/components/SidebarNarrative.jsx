@@ -17,8 +17,9 @@ import {
   ChevronRight,
   Sparkles
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { api } from '../api/client'
 
 export default function SidebarNarrative() {
   const location = useLocation()
@@ -27,6 +28,46 @@ export default function SidebarNarrative() {
     myContent: true,
     reading: false
   })
+  
+  // Состояние для счетчиков книг
+  const [bookCounts, setBookCounts] = useState({
+    all: 0,
+    drafts: 0,
+    published: 0,
+    archived: 0
+  })
+  const [loadingCounts, setLoadingCounts] = useState(true)
+
+  // Загружаем счетчики книг
+  useEffect(() => {
+    loadBookCounts()
+  }, [])
+
+  const loadBookCounts = async () => {
+    try {
+      setLoadingCounts(true)
+      const books = await api.getBooks()
+      
+      if (Array.isArray(books)) {
+        // Подсчитываем книги по статусам
+        const draftsCount = books.filter(book => book.status === 'draft').length
+        const publishedCount = books.filter(book => book.status === 'published').length
+        const archivedCount = books.filter(book => book.status === 'archived').length
+        
+        setBookCounts({
+          all: books.length,
+          drafts: draftsCount,
+          published: publishedCount,
+          archived: archivedCount
+        })
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке счетчиков книг:', error)
+      // Можно оставить значения по умолчанию при ошибке
+    } finally {
+      setLoadingCounts(false)
+    }
+  }
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -37,6 +78,12 @@ export default function SidebarNarrative() {
 
   const isActive = (path) => {
     return location.pathname === path || location.pathname.startsWith(path + '/')
+  }
+
+  // Функция для форматирования счетчика
+  const formatCount = (count, loading) => {
+    if (loading) return '...'
+    return count
   }
 
   const navItems = {
@@ -53,10 +100,34 @@ export default function SidebarNarrative() {
       { id: 'collections', icon: Bookmark, label: 'Подборки', path: '/collections' },
     ],
     myContent: [
-      { id: 'my-books', icon: BookOpen, label: 'Мои книги', count: 5, path: '/my-books' },
-      { id: 'drafts', icon: FolderOpen, label: 'Черновики', count: 3, path: '/drafts' },
-      { id: 'published', icon: Library, label: 'Опубликовано', count: 2, path: '/published' },
-      { id: 'archived', icon: Archive, label: 'Архив', path: '/archive' },
+      { 
+        id: 'my-books', 
+        icon: BookOpen, 
+        label: 'Мои книги', 
+        count: formatCount(bookCounts.all, loadingCounts), 
+        path: '/my-books' 
+      },
+      { 
+        id: 'drafts', 
+        icon: FolderOpen, 
+        label: 'Черновики', 
+        count: formatCount(bookCounts.drafts, loadingCounts), 
+        path: '/drafts' 
+      },
+      { 
+        id: 'published', 
+        icon: Library, 
+        label: 'Опубликовано', 
+        count: formatCount(bookCounts.published, loadingCounts), 
+        path: '/published' 
+      },
+      { 
+        id: 'archived', 
+        icon: Archive, 
+        label: 'Архив', 
+        count: formatCount(bookCounts.archived, loadingCounts), 
+        path: '/archive' 
+      },
     ],
     reading: [
       { id: 'reading-now', icon: BookOpen, label: 'Читаю сейчас', path: '/reading' },
@@ -83,7 +154,9 @@ export default function SidebarNarrative() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-narrative-ink-900 truncate">Тестовый Автор</p>
-            <p className="text-sm text-narrative-ink-500 truncate">Автор · 12 книг</p>
+            <p className="text-sm text-narrative-ink-500 truncate">
+              Автор · {formatCount(bookCounts.all, loadingCounts)} {bookCounts.all === 1 ? 'книга' : 'книг'}
+            </p>
             <div className="flex items-center mt-1">
               <span className="text-xs text-narrative-ink-400">⭐ 4.8 · </span>
               <span className="text-xs text-narrative-ink-400 ml-1">👥 1.2k подписчиков</span>

@@ -29,16 +29,31 @@ import AuthorsPage from './pages/AuthorsPage'
 import CollectionsPage from './pages/CollectionsPage'
 import ProfilePage from './pages/ProfilePage'
 import SettingsPage from './pages/SettingsPage'
-
+import EditBookPage from './pages/EditBookPage';
+import ChaptersPage from './pages/ChaptersPage';
 // Временная главная страница (оставляем ваш оригинальный код)
 function HomePage() {
-  const token = localStorage.getItem('token')
-  const [books, setBooks] = useState([])
-  const [loading, setLoading] = useState(true)
+  const token = localStorage.getItem('token');
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [deletedBookIds, setDeletedBookIds] = useState([]);
 
-  useEffect(() => {
-    loadBooks()
-  }, [])
+useEffect(() => {
+  const handleBookDeleted = () => {
+    console.log('Книга удалена, обновляем ленту');
+    loadBooks();
+    setDeletedBookIds(prev => [...prev, Date.now()]); // Триггер обновления
+  };
+  
+  window.addEventListener('bookDeleted', handleBookDeleted);
+  
+  return () => {
+    window.removeEventListener('bookDeleted', handleBookDeleted);
+  };
+}, []);
+const filteredBooks = (books || [])
+  .filter(book => !deletedBookIds.includes(book.id)) // Фильтруем удаленные
+  .slice(0, 6);
 
   const loadBooks = async () => {
     try {
@@ -139,65 +154,149 @@ function HomePage() {
         </div>
       </div>
 
-      {/* Список книг */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">📚 Недавние книги</h2>
-          <button className="text-primary-600 hover:text-primary-700 font-medium">
-            Смотреть все →
-          </button>
-        </div>
-        
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-600 border-r-transparent"></div>
-            <p className="mt-2 text-gray-600">Загружаем книги...</p>
-          </div>
-        ) : books.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-xl">
-            <Book className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">Пока нет книг</h3>
-            <p className="text-gray-500 mb-4">Будьте первым, кто опубликует книгу!</p>
-            <button className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700">
-              Создать первую книгу
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {books.slice(0, 6).map((book) => (
-              <div key={book.id} className="bg-white rounded-xl shadow-sm border p-5 hover:shadow-md transition-shadow">
-                <div className="flex space-x-4">
-                  <div className="w-24 h-36 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
+{/* Список книг */}
+<div className="mb-8">
+  <div className="flex justify-between items-center mb-4">
+    <h2 className="text-xl font-bold text-gray-900">📚 Недавние книги</h2>
+    <button className="text-blue-600 hover:text-blue-700 font-medium">
+      Смотреть все →
+    </button>
+  </div>
+  
+  {loading ? (
+    <div className="text-center py-8">
+      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+      <p className="mt-2 text-gray-600">Загружаем книги...</p>
+    </div>
+  ) : books.length === 0 ? (
+    <div className="text-center py-12 bg-gray-50 rounded-xl">
+      <Book className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-semibold text-gray-700 mb-2">Пока нет книг</h3>
+      <p className="text-gray-500 mb-4">Будьте первым, кто опубликует книгу!</p>
+      <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+        Создать первую книгу
+      </button>
+    </div>
+  ) : (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {books
+        .filter(book => book.status === 'published') // Только опубликованные
+        .slice(0, 6) // Максимум 6 книг
+        .map((book) => (
+          <div key={book.id} className="bg-white rounded-xl shadow-sm border p-5 hover:shadow-md transition-shadow">
+            <div className="flex space-x-4">
+              {/* Обложка книги */}
+              <div className="w-24 h-36 rounded-lg overflow-hidden flex-shrink-0">
+                {book.cover_url || book.coverUrl ? (
+                  <img 
+                    src={book.cover_url ? `http://localhost:3001${book.cover_url}` : 
+                          book.coverUrl ? `http://localhost:3001${book.coverUrl}` : ''}
+                    alt={book.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = `
+                        <div class="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
+                          <Book class="h-8 w-8 text-gray-400" />
+                        </div>
+                      `;
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
                     <Book className="h-8 w-8 text-gray-400" />
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{book.title}</h3>
-                    <p className="text-sm text-gray-600 mb-2">
-                      {book.author_name || 'Автор'}
-                      <span className="mx-2">•</span>
-                      <span className="px-2 py-1 bg-gray-100 rounded text-xs">
-                        {book.genre || 'Фэнтези'}
-                      </span>
-                    </p>
-                    <p className="text-gray-700 text-sm mb-3 line-clamp-2">
-                      {book.description || 'Описание пока не добавлено...'}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
-                        <span>👍 {book.likes_count || 0}</span>
-                        <span>💬 {book.comments_count || 0}</span>
-                      </div>
-                      <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                        Читать →
-                      </button>
+                )}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{book.title}</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  {book.author_name || 'Автор'}
+                  <span className="mx-2">•</span>
+                  <span className="px-2 py-1 bg-gray-100 rounded text-xs">
+                    {book.genre || 'Фэнтези'}
+                  </span>
+                </p>
+                <p className="text-gray-700 text-sm mb-3 line-clamp-2">
+                  {book.description || 'Описание пока не добавлено...'}
+                </p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                    <span>👍 {book.likes_count || book.likes || 0}</span>
+                    <span>💬 {book.comments_count || 0}</span>
+                  </div>
+                  <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                    Читать →
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))
+      }
+      
+      {/* Также показываем книги из localStorage ленты */}
+      {(() => {
+        const feedBooks = JSON.parse(localStorage.getItem('bookFeed') || '[]')
+          .filter(item => item.type === 'book' && item.status === 'published')
+          .slice(0, 3);
+        
+        if (feedBooks.length > 0) {
+          return feedBooks.map((item, index) => (
+            <div key={`feed-${index}`} className="bg-white rounded-xl shadow-sm border p-5 hover:shadow-md transition-shadow">
+              <div className="flex space-x-4">
+                <div className="w-24 h-36 rounded-lg overflow-hidden flex-shrink-0">
+                  {item.coverUrl ? (
+                    <img 
+                      src={item.coverUrl.startsWith('http') ? item.coverUrl : `http://localhost:3001${item.coverUrl}`}
+                      alt={item.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML = `
+                          <div class="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
+                            <Book class="h-8 w-8 text-gray-400" />
+                          </div>
+                        `;
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
+                      <Book className="h-8 w-8 text-gray-400" />
                     </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">{item.title}</h3>
+                  <p className="text-sm text-gray-600 mb-2">
+                    {item.author || 'Автор'}
+                    <span className="mx-2">•</span>
+                    <span className="px-2 py-1 bg-gray-100 rounded text-xs">
+                      {item.genre || 'Фэнтези'}
+                    </span>
+                  </p>
+                  <p className="text-gray-700 text-sm mb-3 line-clamp-2">
+                    {item.description || 'Описание пока не добавлено...'}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      <span>👍 0</span>
+                      <span>💬 0</span>
+                    </div>
+                    <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                      Читать →
+                    </button>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ));
+        }
+        return null;
+      })()}
+    </div>
+  )}
+</div>
 
       {/* Пример поста из ленты */}
 <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
@@ -293,6 +392,7 @@ function App() {
         {/* Все защищённые маршруты */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/books/:id/chapters" element={<ChaptersPage />} />
           
           {/* Главная навигация */}
           <Route path="/feed" element={<HomePage />} />
@@ -311,6 +411,9 @@ function App() {
           <Route path="/drafts" element={<DraftsPage />} />
           <Route path="/published" element={<PublishedPage />} />
           <Route path="/archive" element={<ArchivePage />} />
+
+          {/* НОВЫЙ МАРШРУТ ДЛЯ РЕДАКТИРОВАНИЯ КНИГИ */}
+          <Route path="/books/edit/:id" element={<EditBookPage />} />
           
           {/* Профиль и настройки */}
           <Route path="/profile" element={<ProfilePage />} />
