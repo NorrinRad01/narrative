@@ -3,7 +3,7 @@ import {
   X, Book, Type, FileText, Tag, Image as ImageIcon, 
   Eye, Heart, MessageSquare, Bookmark, Sparkles,
   Clock, User, Award, Star, ChevronRight,
-  Upload, Trash2, Loader
+  Upload, Trash2, Loader, CheckCircle
 } from 'lucide-react'
 
 // Компонент Preview карточки
@@ -241,6 +241,7 @@ export default function CreateBookModal({ isOpen, onClose, onBookCreated }) {
   const [error, setError] = useState('')
   const [coverPreview, setCoverPreview] = useState(null)
   const [coverFile, setCoverFile] = useState(null)
+  const [success, setSuccess] = useState('')
   const fileInputRef = useRef(null)
 
   const genres = [
@@ -281,152 +282,193 @@ export default function CreateBookModal({ isOpen, onClose, onBookCreated }) {
     setCoverFile(file)
   }
 
-// В функции handleUploadCover обновите:
-const handleUploadCover = async () => {
-  if (!coverFile) {
-    console.log('Нет файла для загрузки');
-    return null;
-  }
-  
-  setUploading(true);
-  setError('');
-  setSuccess('');
-  
-  try {
-    console.log('📤 Начинаем загрузку файла:', coverFile.name);
-    console.log('📊 Размер файла:', coverFile.size);
-    console.log('📄 Тип файла:', coverFile.type);
-    
-    const formData = new FormData();
-    formData.append('cover', coverFile);
-    
-    // Добавляем токен если есть
-    const token = localStorage.getItem('token');
-    console.log('🔑 Токен:', token ? 'Есть' : 'Нет');
-    
-    const headers = {};
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+  const handleUploadCover = async () => {
+    if (!coverFile) {
+      console.log('Нет файла для загрузки');
+      return null;
     }
     
-    // НЕ добавляем Content-Type заголовок - браузер сделает это сам
+    setUploading(true);
+    setError('');
     
-    console.log('🌐 Отправляем запрос на http://localhost:3001/api/upload/cover');
-    
-    const response = await fetch('http://localhost:3001/api/upload/cover', {
-      method: 'POST',
-      headers: headers,
-      body: formData
-    });
-    
-    console.log('📥 Ответ сервера:', response.status);
-    console.log('📥 Статус:', response.statusText);
-    
-    const result = await response.json();
-    console.log('📦 Результат:', result);
-    
-    if (!response.ok) {
-      throw new Error(result.error || `Ошибка загрузки: ${response.status}`);
-    }
-    
-    // Извлекаем URL из разных форматов ответа
-    let coverUrl = '';
-    if (result.url) {
-      coverUrl = result.url; // Полный URL
-    } else if (result.file && result.file.url) {
-      coverUrl = result.file.url;
-    } else if (result.relativeUrl) {
-      coverUrl = `http://localhost:3001${result.relativeUrl}`;
-    } else if (result.filename) {
-      coverUrl = `http://localhost:3001/uploads/${result.filename}`;
-    }
-    
-    console.log('✅ Обложка загружена, URL:', coverUrl);
-    
-    return coverUrl;
-    
-  } catch (err) {
-    console.error('❌ Ошибка загрузки обложки:', err);
-    console.error('❌ Stack:', err.stack);
-    alert(`Не удалось загрузить обложку: ${err.message}\n\nКнига будет создана без обложки.`);
-    return null;
-  } finally {
-    setUploading(false);
-  }
-};
-
-// В функции handleSubmit обновите начало:
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  console.log('📘 Начинаем создание книги...');
-  
-  if (!formData.title.trim()) {
-    setError('Название книги обязательно');
-    return;
-  }
-
-  setLoading(true);
-  setError('');
-  setSuccess('');
-
-  try {
-    let cover_url = null;
-    
-    // 1. Загружаем обложку если есть
-    if (coverFile) {
-      console.log('🖼️  Начинаем загрузку обложки...');
-      const uploadedCover = await handleUploadCover();
-      console.log('📥 Результат загрузки обложки:', uploadedCover);
-      if (uploadedCover) {
-        cover_url = uploadedCover;
+    try {
+      console.log('📤 Начинаем загрузку файла:', coverFile.name);
+      console.log('📊 Размер файла:', coverFile.size);
+      console.log('📄 Тип файла:', coverFile.type);
+      
+      const formData = new FormData();
+      formData.append('cover', coverFile);
+      
+      // Добавляем токен если есть
+      const token = localStorage.getItem('token');
+      console.log('🔑 Токен:', token ? 'Есть' : 'Нет');
+      
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
-    } else {
-      console.log('📭 Обложка не выбрана, пропускаем загрузку');
+      
+      console.log('🌐 Отправляем запрос на http://localhost:3001/api/upload/cover');
+      
+      const response = await fetch('http://localhost:3001/api/upload/cover', {
+        method: 'POST',
+        headers: headers,
+        body: formData
+      });
+      
+      console.log('📥 Ответ сервера:', response.status);
+      console.log('📥 Статус:', response.statusText);
+      
+      const result = await response.json();
+      console.log('📦 Результат:', result);
+      
+      if (!response.ok) {
+        throw new Error(result.error || `Ошибка загрузки: ${response.status}`);
+      }
+      
+      // Извлекаем URL из разных форматов ответа
+      let coverUrl = '';
+      if (result.url) {
+        coverUrl = result.url; // Полный URL
+      } else if (result.file && result.file.url) {
+        coverUrl = result.file.url;
+      } else if (result.relativeUrl) {
+        coverUrl = `http://localhost:3001${result.relativeUrl}`;
+      } else if (result.filename) {
+        coverUrl = `http://localhost:3001/uploads/${result.filename}`;
+      }
+      
+      console.log('✅ Обложка загружена, URL:', coverUrl);
+      
+      return coverUrl;
+      
+    } catch (err) {
+      console.error('❌ Ошибка загрузки обложки:', err);
+      console.error('❌ Stack:', err.stack);
+      alert(`Не удалось загрузить обложку: ${err.message}\n\nКнига будет создана без обложки.`);
+      return null;
+    } finally {
+      setUploading(false);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
-    // 2. Подготавливаем данные для сервера
-    const bookData = {
-      title: formData.title.trim(),
-      description: formData.description.trim() || '',
-      genre: formData.genre,
-      status: formData.status,
-      cover_url: cover_url || ''
-    };
+    console.log('📘 Начинаем создание книги...');
     
-    console.log('📦 Отправляем данные книги:', bookData);
-    
-    // 3. Отправляем на сервер
-    const token = localStorage.getItem('token');
-    console.log('🔑 Токен для создания книги:', token ? 'Есть' : 'Нет');
-    
-    const response = await fetch('http://localhost:3001/api/books', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` })
-      },
-      body: JSON.stringify(bookData)
-    });
-    
-    const responseText = await response.text();
-    console.log('📨 Ответ сервера на создание книги:');
-    console.log('📨 Статус:', response.status);
-    console.log('📨 Текст:', responseText);
-    
-    if (!response.ok) {
-      throw new Error(`Ошибка создания книги: ${response.status} - ${responseText}`);
+    if (!formData.title.trim()) {
+      setError('Название книги обязательно');
+      return;
     }
-    
-    // ... остальной код остается таким же
-  } catch (err) {
-    console.error('❌ Ошибка создания книги:', err);
-    setError(err.message || 'Ошибка при создании книги');
-    alert(`Ошибка: ${err.message}`);
-  } finally {
-    setLoading(false);
-  }
-};
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      let cover_url = null;
+      
+      // 1. Загружаем обложку если есть
+      if (coverFile) {
+        console.log('🖼️  Начинаем загрузку обложки...');
+        const uploadedCover = await handleUploadCover();
+        console.log('📥 Результат загрузки обложки:', uploadedCover);
+        if (uploadedCover) {
+          cover_url = uploadedCover;
+        }
+      } else {
+        console.log('📭 Обложка не выбрана, пропускаем загрузку');
+      }
+      
+      // 2. Подготавливаем данные для сервера
+      const bookData = {
+        title: formData.title.trim(),
+        description: formData.description.trim() || '',
+        genre: formData.genre,
+        status: formData.status,
+        cover_url: cover_url || ''
+      };
+      
+      console.log('📦 Отправляем данные книги:', bookData);
+      
+      // 3. Отправляем на сервер
+      const token = localStorage.getItem('token');
+      console.log('🔑 Токен для создания книги:', token ? 'Есть' : 'Нет');
+      
+      const response = await fetch('http://localhost:3001/api/books', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify(bookData)
+      });
+      
+      const responseText = await response.text();
+      console.log('📨 Ответ сервера на создание книги:');
+      console.log('📨 Статус:', response.status);
+      console.log('📨 Текст:', responseText);
+      
+      if (!response.ok) {
+        throw new Error(`Ошибка создания книги: ${response.status} - ${responseText}`);
+      }
+      
+      // 4. УСПЕШНОЕ СОЗДАНИЕ - обрабатываем результат
+      try {
+        const result = JSON.parse(responseText);
+        console.log('✅ Книга успешно создана:', result);
+        
+        // Показываем успех
+        setSuccess('Книга успешно создана!');
+        
+        // Обновляем список книг через 1 секунду
+        setTimeout(() => {
+          if (onBookCreated) {
+            onBookCreated();
+          }
+          onClose(); // Закрываем модалку
+          
+          // Очищаем форму
+          setFormData({
+            title: '',
+            description: '',
+            genre: 'fantasy',
+            status: 'draft'
+          });
+          setCoverPreview(null);
+          setCoverFile(null);
+        }, 1000);
+        
+      } catch (parseError) {
+        console.warn('Не удалось распарсить ответ:', parseError);
+        setSuccess('Книга успешно создана!');
+        
+        setTimeout(() => {
+          if (onBookCreated) {
+            onBookCreated();
+          }
+          onClose();
+          
+          // Очищаем форму
+          setFormData({
+            title: '',
+            description: '',
+            genre: 'fantasy',
+            status: 'draft'
+          });
+          setCoverPreview(null);
+          setCoverFile(null);
+        }, 1000);
+      }
+      
+    } catch (err) {
+      console.error('❌ Ошибка создания книги:', err);
+      setError(err.message || 'Ошибка при создании книги');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!isOpen) return null
 
@@ -459,6 +501,16 @@ const handleSubmit = async (e) => {
           {/* Левая колонка - форма */}
           <div className="p-8 overflow-y-auto border-r border-gray-200">
             <form onSubmit={handleSubmit} className="space-y-8">
+              
+              {/* Сообщение об успехе */}
+              {success && (
+                <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 text-green-700 rounded-lg">
+                  <div className="flex items-center">
+                    <CheckCircle className="h-6 w-6 text-green-500 mr-3" />
+                    <span className="font-medium">{success}</span>
+                  </div>
+                </div>
+              )}
               
               {/* Название */}
               <div>

@@ -15,18 +15,18 @@ export default function BookList({ filter = 'all', onBookUpdate }) {
     if (!book) return null;
     
     return {
-      id: book.id || book.book_id,
+      id: book.id,
       title: book.title || 'Без названия',
-      description: book.description || book.desc || '',
+      description: book.description || '',
       genre: book.genre || '',
       status: book.status || 'draft',
-      coverUrl: book.cover_url || book.coverUrl || book.cover || '',
-      createdAt: book.created_at || book.createdAt || book.created_date || new Date().toISOString(),
-      updatedAt: book.updated_at || book.updatedAt || new Date().toISOString(),
-      chapterCount: book.chapter_count || book.chapterCount || book.chapters_count || 0,
-      likes: book.likes_count || book.likes || book.like_count || 0,
-      authorId: book.author_id || book.authorId || 1,
-      author_name: book.author_name || book.authorName || 'Автор'
+      coverUrl: book.cover_url || '',
+      createdAt: book.created_at || new Date().toISOString(),
+      updatedAt: book.updated_at || new Date().toISOString(),
+      chapterCount: book.chapter_count || 0,
+      likes: book.likes_count || 0,
+      authorId: book.author_id || 1,
+      author_name: book.author_name || 'Автор'
     };
   };
 
@@ -113,172 +113,193 @@ export default function BookList({ filter = 'all', onBookUpdate }) {
     return deletedBookIds.includes(bookId);
   };
 
-const loadBooks = async () => {
-  try {
-    setLoading(true);
-    setError(null);
-    
-    console.log('📚 Начинаем загрузку книг...');
-    
-    const token = localStorage.getItem('token');
-    console.log('🔑 Токен в localStorage:', token ? 'Есть' : 'Нет');
-    
-    let url = 'http://localhost:3001/api/books';
-    const headers = {
-      'Content-Type': 'application/json'
-    };
-    
-    // Если есть токен и мы в разделе "Мои книги", используем защищенный endpoint
-    if (token && (filter === 'draft' || filter === 'published' || filter === 'archived' || window.location.pathname.includes('my-books'))) {
-      console.log('👤 Загружаем книги пользователя');
-      url = 'http://localhost:3001/api/my-books';
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    console.log('🌐 Запрос к:', url);
-    
-    const response = await fetch(url, { headers });
-    
-    console.log('📥 Ответ сервера:', response.status, response.statusText);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Ошибка HTTP:', errorText);
+  const loadBooks = async () => {
+    try {
+      setLoading(true);
+      setError(null);
       
-      // Если 401, пробуем публичный endpoint
+      console.log('📚 Начинаем загрузку книг...');
+      
+      const token = localStorage.getItem('token');
+      console.log('🔑 Токен в localStorage:', token ? `Есть (${token.length} символов)` : 'Нет');
+      
+      let url = 'http://localhost:3001/api/books';
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      // ВСЕГДА используем /api/my-books если есть токен (чтобы видеть черновики)
+      if (token) {
+        console.log('👤 Загружаем книги пользователя через /api/my-books');
+        url = 'http://localhost:3001/api/my-books';
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      console.log('🌐 Запрос к:', url);
+      console.log('📋 Заголовки:', JSON.stringify(headers, null, 2));
+      
+      const response = await fetch(url, { headers });
+      
+      console.log('📥 Ответ сервера:', response.status, response.statusText);
+      
+      // Подробная отладка при ошибке 401
       if (response.status === 401) {
-        console.log('⚠️ 401, пробуем публичные книги');
-        const publicResponse = await fetch('http://localhost:3001/api/books');
-        if (publicResponse.ok) {
-          const publicData = await publicResponse.json();
-          processBooksData(publicData);
-          return;
-        }
+        console.error('❌ ОШИБКА 401 - Проблемы с авторизацией');
+        console.error('❌ Токен, который отправили:', token);
+        
+        // Пробуем получить текст ошибки
+        const errorText = await response.text();
+        console.error('❌ Текст ошибки от сервера:', errorText);
       }
       
-      throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Ошибка HTTP:', errorText);
+        
+        // Если 401, пробуем публичный endpoint
+        if (response.status === 401) {
+          console.log('⚠️ 401, пробуем публичные книги');
+          const publicResponse = await fetch('http://localhost:3001/api/books');
+          if (publicResponse.ok) {
+            const publicData = await publicResponse.json();
+            processBooksData(publicData);
+            return;
+          }
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
+      }
+      
+      const data = await response.json();
+      console.log('📦 Получены данные:', data);
+      
+      processBooksData(data);
+      
+    } catch (err) {
+      console.error('❌ Ошибка загрузки книг:', err);
+      setError(`Не удалось загрузить книги: ${err.message}`);
+      
+      // Fallback данные
+      const fallbackBooks = [
+        {
+          id: 1,
+          title: 'Пример книги',
+          description: 'Тестовая книга для демонстрации',
+          genre: 'Фэнтези',
+          status: 'draft',
+          cover_url: '',
+          created_at: new Date().toISOString(),
+          chapter_count: 0,
+          likes_count: 0,
+          author_id: 1
+        }
+      ];
+      
+      const transformed = fallbackBooks
+        .map(transformServerData)
+        .filter(book => book !== null && !isBookDeleted(book.id));
+      
+      const filtered = filter === 'all' ? transformed : transformed.filter(b => b.status === filter);
+      setBooks(filtered);
+      
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Вспомогательная функция для обработки данных
+  const processBooksData = (data) => {
+    let booksArray = [];
+    
+    console.log('📊 Обрабатываем данные сервера:', data);
+    
+    // Обрабатываем разные форматы ответа
+    if (Array.isArray(data)) {
+      booksArray = data;
+    } else if (data && Array.isArray(data.books)) {
+      booksArray = data.books;
+    } else if (data && data.success && Array.isArray(data.data)) {
+      booksArray = data.data;
+    } else if (data && data.books) {
+      booksArray = data.books;
     }
     
-    const data = await response.json();
-    console.log('📦 Получены данные:', data);
+    console.log('📊 Книг для обработки:', booksArray.length);
+    console.log('📖 Первая книга из массива:', booksArray[0]);
     
-    processBooksData(data);
-    
-  } catch (err) {
-    console.error('❌ Ошибка загрузки книг:', err);
-    setError(`Не удалось загрузить книги: ${err.message}`);
-    
-    // Fallback данные
-    const fallbackBooks = [
-      {
-        id: 1,
-        title: 'Пример книги',
-        description: 'Тестовая книга для демонстрации',
-        genre: 'Фэнтези',
-        status: 'draft',
-        cover_url: '',
-        created_at: new Date().toISOString(),
-        chapter_count: 0,
-        likes_count: 0,
-        author_id: 1
-      }
-    ];
-    
-    const transformed = fallbackBooks
+    const transformedBooks = booksArray
       .map(transformServerData)
       .filter(book => book !== null && !isBookDeleted(book.id));
     
-    const filtered = filter === 'all' ? transformed : transformed.filter(b => b.status === filter);
-    setBooks(filtered);
+    console.log('✅ Преобразовано книг:', transformedBooks.length);
+    console.log('📚 Все преобразованные книги:', transformedBooks);
     
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
-
-// Вспомогательная функция для обработки данных
-const processBooksData = (data) => {
-  let booksArray = [];
-  
-  // Обрабатываем разные форматы ответа
-  if (Array.isArray(data)) {
-    booksArray = data;
-  } else if (data && Array.isArray(data.books)) {
-    booksArray = data.books;
-  } else if (data && data.success && Array.isArray(data.data)) {
-    booksArray = data.data;
-  }
-  
-  console.log('📊 Книг для обработки:', booksArray.length);
-  
-  const transformedBooks = booksArray
-    .map(transformServerData)
-    .filter(book => book !== null && !isBookDeleted(book.id));
-  
-  console.log('✅ Преобразовано книг:', transformedBooks.length);
-  
-  let filteredBooks = transformedBooks;
-  if (filter !== 'all') {
-    filteredBooks = transformedBooks.filter(book => book.status === filter);
-    console.log(`🎯 После фильтра "${filter}":`, filteredBooks.length);
-  }
-  
-  setBooks(filteredBooks);
-};
-
-const handleStatusChange = async (bookId, newStatus) => {
-  try {
-    const token = localStorage.getItem('token');
-    
-    if (!token) {
-      alert('❌ Требуется авторизация');
-      return;
+    let filteredBooks = transformedBooks;
+    if (filter !== 'all') {
+      filteredBooks = transformedBooks.filter(book => book.status === filter);
+      console.log(`🎯 После фильтра "${filter}":`, filteredBooks.length);
     }
     
-    console.log(`🔄 Изменение статуса книги ${bookId} на ${newStatus}`);
-    
-    const response = await fetch(`http://localhost:3001/api/books/${bookId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ 
-        status: newStatus,
-        // Отправляем текущие данные книги (можно добавить из состояния)
-        title: books.find(b => b.id === bookId)?.title || '',
-        genre: books.find(b => b.id === bookId)?.genre || '',
-        description: books.find(b => b.id === bookId)?.description || ''
-      })
-    });
-    
-    const result = await response.json();
-    
-    if (response.ok) {
-      setBooks(prev => prev.map(book => 
-        book.id === bookId ? { ...book, status: newStatus } : book
-      ));
+    setBooks(filteredBooks);
+  };
+
+  const handleStatusChange = async (bookId, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
       
-      alert(`✅ Статус изменен на: ${
-        newStatus === 'draft' ? 'Черновик' : 
-        newStatus === 'published' ? 'Опубликовано' : 
-        'Архив'
-      }`);
-      
-      if (onBookUpdate) {
-        onBookUpdate();
+      if (!token) {
+        alert('❌ Требуется авторизация');
+        return;
       }
-    } else {
-      throw new Error(result.error || 'Ошибка обновления статуса');
+      
+      console.log(`🔄 Изменение статуса книги ${bookId} на ${newStatus}`);
+      
+      const response = await fetch(`http://localhost:3001/api/books/${bookId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          status: newStatus,
+          title: books.find(b => b.id === bookId)?.title || '',
+          genre: books.find(b => b.id === bookId)?.genre || '',
+          description: books.find(b => b.id === bookId)?.description || ''
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        setBooks(prev => prev.map(book => 
+          book.id === bookId ? { ...book, status: newStatus } : book
+        ));
+        
+        alert(`✅ Статус изменен на: ${
+          newStatus === 'draft' ? 'Черновик' : 
+          newStatus === 'published' ? 'Опубликовано' : 
+          'Архив'
+        }`);
+        
+        if (onBookUpdate) {
+          onBookUpdate();
+        }
+      } else {
+        throw new Error(result.error || 'Ошибка обновления статуса');
+      }
+    } catch (err) {
+      console.error('Error updating book status:', err);
+      alert(`❌ Ошибка при изменении статуса: ${err.message}`);
     }
-  } catch (err) {
-    console.error('Error updating book status:', err);
-    alert(`❌ Ошибка при изменении статуса: ${err.message}`);
-  }
-};
+  };
 
   useEffect(() => {
+    console.log('🔐 Проверка при монтировании BookList:');
+    console.log('🔐 Токен:', localStorage.getItem('token'));
+    console.log('🔐 Фильтр:', filter);
+    console.log('🔐 Pathname:', window.location.pathname);
+    
     loadBooks();
     
     // Слушаем события удаления книг

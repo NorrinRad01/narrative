@@ -301,18 +301,33 @@ app.get('/api/books', async (req, res) => {
 });
 
 // Мои книги (только авторизованного пользователя)
+// Мои книги (только авторизованного пользователя)
 app.get('/api/my-books', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     
+    console.log('📚 Запрос /api/my-books получен');
+    console.log('🔐 Токен из заголовка:', token ? `Есть (${token.length} символов)` : 'Нет');
+    
     if (!token) {
+      console.log('❌ Нет токена, возвращаем 401');
       return res.status(401).json({
         success: false,
         error: 'Требуется авторизация'
       });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'narrative_secret_key_2024');
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'narrative_secret_key_2024');
+      console.log('✅ Токен валиден. User ID:', decoded.userId);
+    } catch (jwtError) {
+      console.error('❌ Ошибка проверки токена:', jwtError.message);
+      return res.status(401).json({
+        success: false,
+        error: 'Недействительный токен'
+      });
+    }
     
     console.log('📚 Получение книг для пользователя ID:', decoded.userId);
     
@@ -324,20 +339,39 @@ app.get('/api/my-books', async (req, res) => {
       ORDER BY b.created_at DESC
     `, [decoded.userId]);
     
-    console.log(`✅ Найдено ${books.length} книг`);
+    console.log(`✅ Найдено ${books.length} книг в базе`);
+    
+    // Если книг нет - возвращаем пустой массив
+    if (!books || books.length === 0) {
+      return res.json({
+        success: true,
+        count: 0,
+        books: []
+      });
+    }
     
     // Добавляем количество глав для каждой книги
     const booksWithChapters = await Promise.all(books.map(async (book) => {
-      const chapterResult = await get(
-        'SELECT COUNT(*) as count FROM chapters WHERE book_id = ?',
-        [book.id]
-      );
-      
-      return {
-        ...book,
-        chapter_count: chapterResult?.count || 0
-      };
+      try {
+        const chapterResult = await get(
+          'SELECT COUNT(*) as count FROM chapters WHERE book_id = ?',
+          [book.id]
+        );
+        
+        return {
+          ...book,
+          chapter_count: chapterResult?.count || 0
+        };
+      } catch (error) {
+        console.error(`❌ Ошибка получения глав для книги ${book.id}:`, error);
+        return {
+          ...book,
+          chapter_count: 0
+        };
+      }
     }));
+    
+    console.log(`✅ Возвращаем ${booksWithChapters.length} книг с количеством глав`);
     
     res.json({
       success: true,
@@ -346,18 +380,15 @@ app.get('/api/my-books', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Ошибка получения моих книг:', error);
+    console.error('❌ Ошибка получения моих книг:', error);
+    console.error('❌ Stack trace:', error.stack);
     
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        success: false,
-        error: 'Недействительный токен'
-      });
-    }
-    
+    // Возвращаем более информативную ошибку
     res.status(500).json({
       success: false,
-      error: 'Внутренняя ошибка сервера'
+      error: 'Внутренняя ошибка сервера',
+      message: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
